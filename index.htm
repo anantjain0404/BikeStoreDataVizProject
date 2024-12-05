@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bikestore Data Analytics Project</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="header">
+        <h1>Bikestore Data Analytics Project</h1>
+        <p>By: Anant Jain</p>
+        <p>Date: September 2024</p>
+    </header>
+
+    <!-- Main Content -->
+   
+
+  
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+    <main>
+        <!-- Problem Statement Section -->
+        <section class="section">
+          <h2>Problem Statement</h2>
+          <p>
+              In today’s data-driven world, businesses rely heavily on accurate and comprehensive data to make informed decisions.
+              The Bikestore dataset serves as a rich repository, offering valuable insights into customer orders, product categories, sales trends, and revenue distribution.
+              However, despite its potential, the dataset presents several challenges that limit its direct applicability for actionable insights.
+          </p>
+          <p>The key challenges identified include:</p>
+          <ul class="styled-list">
+              <li>
+                  <strong>Data Duplication:</strong> 
+                  Multiple duplicate records in the dataset lead to skewed revenue and sales calculations, compromising the accuracy of business insights.
+              </li>
+              <li>
+                  <strong>Incomplete Data:</strong> 
+                  Several critical fields, such as revenue, customer location, and product descriptions, contain missing values, limiting the ability to perform a holistic analysis.
+              </li>
+              <li>
+                  <strong>Unstandardized Product Categories:</strong> 
+                  A lack of consistent categorization for products hinders segmentation, making it challenging to analyze performance across different product lines effectively.
+              </li>
+              <li>
+                  <strong>Seasonality Insights:</strong> 
+                  Limited visibility into seasonal sales patterns prevents businesses from optimizing inventory and aligning marketing strategies with demand fluctuations.
+              </li>
+          </ul>
+          <p>
+              These challenges underscore the need for a structured approach to data cleaning, integration, and analysis. By addressing these issues, stakeholders can uncover actionable insights and implement data-driven strategies to enhance business outcomes.
+          </p>
+          <p>
+              This project adopts a systematic methodology leveraging SQL for robust data cleaning, Excel for visualization, and Tableau for creating interactive dashboards. The primary objective is to transform raw data into a refined, analytical dataset that empowers stakeholders with meaningful insights to improve decision-making across inventory, sales, and marketing functions.
+          </p>
+      </section>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Data Cleaning and SQL Integration Section -->
+<section class="section">
+  <h2>Data Cleaning and SQL Integration</h2>
+  <p>
+      To prepare the dataset for meaningful analysis, SQL was utilized to clean and integrate the data from various tables. The following steps were undertaken:
+  </p>
+  <ul class="styled-list">
+      <li><strong>Removing Duplicate Records:</strong> Ensured no redundant data skewed sales and revenue analysis.</li>
+      <li><strong>Handling Missing Values:</strong> Used logical estimates or category-specific averages to impute missing fields like revenue and product details.</li>
+      <li><strong>Standardizing Product Categories:</strong> Grouped products into predefined categories such as "Mountain Bikes," "Road Bikes," and "Accessories" for consistent segmentation.</li>
+      <li><strong>Enhancing Data Consistency:</strong> Ensured uniform date formats and applied consistent naming conventions.</li>
+      <li><strong>Integrating Data Using Joins:</strong> Combined data from multiple tables (e.g., customers, products, orders) to build a unified dataset that captures customer, product, and sales performance insights.</li>
+  </ul>
+
+  <p>
+      The SQL query utilizes joins to connect various tables (e.g., `customers`, `orders`, `products`, and `categories`) using foreign key relationships. These joins enabled the aggregation of total units sold, revenue, and identification of top-performing products and sales personnel. The use of the `GROUP BY` clause ensures accurate summarization of data at the desired level of granularity.
+  </p>
+  <p>
+      To ensure the dataset was clean and reliable, the following SQL queries were implemented to handle duplicates, missing values, and null fields:
+  </p>
+  <div class="code-block">
+      <pre>
+-- Remove duplicates based on key fields
+DELETE FROM orders
+WHERE order_id IN (
+  SELECT order_id
+  FROM (
+      SELECT order_id, 
+             ROW_NUMBER() OVER (PARTITION BY customer_id, product_id, order_date ORDER BY order_id) AS rnum
+      FROM orders
+  ) t
+  WHERE t.rnum > 1
+);
+
+-- Handle null values by replacing them with logical defaults
+UPDATE products
+SET list_price = COALESCE(list_price, 0), -- Replace null prices with 0
+  category_id = COALESCE(category_id, 1) -- Assign missing categories to 'Uncategorized'
+
+-- Fill missing revenue values with calculated averages
+UPDATE orders
+SET revenue = (SELECT AVG(revenue) 
+             FROM orders WHERE revenue IS NOT NULL)
+WHERE revenue IS NULL;
+      </pre>
+  </div>
+  <p>
+      The above queries ensure that duplicate records are removed, null fields are replaced with meaningful defaults or calculated values, and missing revenue data is imputed using average revenue values.
+  </p>
+  <p>
+      After applying the above queries, the dataset was free from inconsistencies and ready for integration. Below is the SQL query for integrating and summarizing the data:
+  </p>
+  <div class="code-block">
+      <pre>
+SELECT 
+  ord.order_id,
+  CONCAT(cus.first_name, ' ', cus.last_name) AS cust_name,
+  cus.city,
+  cus.state,
+  ord.order_date,
+  SUM(ite.quantity) AS total_units,
+  SUM(ite.quantity * ite.list_price) AS revenue,
+  pro.product_name,
+  cat.category_name,
+  brd.brand_name,
+  sto.store_name,
+  CONCAT(sta.first_name, ' ', sta.last_name) AS sales_person
+FROM sales.orders ord
+JOIN sales.customers cus ON ord.customer_id = cus.customer_id
+JOIN sales.order_items ite ON ord.order_id = ite.order_id
+JOIN production.products pro ON ite.product_id = pro.product_id
+JOIN production.categories cat ON pro.category_id = cat.category_id
+JOIN sales.stores sto ON ord.store_id = sto.store_id
+JOIN sales.staffs sta ON ord.staff_id = sta.staff_id
+JOIN production.brands brd ON pro.brand_id = brd.brand_id
+GROUP BY 
+  ord.order_id,
+  cust_name,
+  cus.city,
+  cus.state,
+  ord.order_date,
+  pro.product_name,
+  cat.category_name,
+  brd.brand_name,
+  sto.store_name,
+  sales_person;
+      </pre>
+  </div>
+  <p>
+      This query integrates data across multiple tables and aggregates key metrics such as total units sold and revenue, enabling comprehensive analysis of sales performance.
+  </p>
+</section>
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        
+                <!-- Pivot Table Analysis Section -->
+                <section class="section">
+                    <h2>Pivot Table Analysis</h2>
+                    <div class="image-container">
+                      <img src="PIVOTF.png" alt="Pivot Table Screenshot">
+                  </div>
+                    <h3>1. Revenue by Year and Month</h3>
+                    <p>The pivot table highlights the distribution of revenue over three years (2016, 2017, 2018). Key insights include:</p>
+                    <ul class="styled-list">
+                        <li><strong>2016 Revenue:</strong> $2,709,484.47, with the highest revenue generated in August ($253,130.83).</li>
+                        <li><strong>2017 Revenue:</strong> $3,845,515.02, showing a significant increase from 2016, with the peak in October ($345,316.18).</li>
+                        <li><strong>2018 Revenue:</strong> $2,023,989.39 (partial data available), indicating a drop compared to 2017.</li>
+                    </ul>
+        
+                    <h3>2. Revenue by Store</h3>
+                    <p>Revenue is concentrated across three stores:</p>
+                    <ul class="styled-list">
+                        <li><strong>Baldwin Bikes:</strong> 68% of total revenue, demonstrating its dominant market position.</li>
+                        <li><strong>Santa Cruz Bikes:</strong> 21% contribution.</li>
+                        <li><strong>Rowlett Bikes:</strong> 11%, the least among the three.</li>
+                    </ul>
+        
+                    <h3>3. Revenue by Category</h3>
+                    <p>Mountain Bikes and Road Bikes contribute significantly to revenue:</p>
+                    <ul class="styled-list">
+                        <li><strong>Mountain Bikes:</strong> $3,030,775.71 (35% of total).</li>
+                        <li><strong>Road Bikes:</strong> $1,852,555.60.</li>
+                        <li>Other categories like Cruisers Bicycles and Electric Bikes show steady demand.</li>
+                    </ul>
+        
+                    <h3>4. Revenue by Brand</h3>
+                    <p>Among brands:</p>
+                    <ul class="styled-list">
+                        <li><strong>Trek:</strong> Dominates with $5,129,381.61 in revenue.</li>
+                        <li><strong>Electra and Surly:</strong> Together contribute around $2.4M.</li>
+                        <li>Smaller brands like Strider and Ritchey make minimal contributions.</li>
+                    </ul>
+        
+                    <h3>5. Top Sales Personnel</h3>
+                    <p>Sales personnel performance reveals:</p>
+                    <ul class="styled-list">
+                        <li><strong>Marcelene Boyer:</strong> Leads with $2,938,883.73 in sales.</li>
+                        <li><strong>Venita Daniel:</strong> Follows with $2,887,353.48.</li>
+                        <li>Other personnel have comparatively lower revenue contributions.</li>
+                    </ul>
+                </section>
+        
+                <!-- Chart Analysis Section -->
+                <section class="section">
+                    <h2>Chart Analysis</h2>
+        
+                    <h3>Chart 1: Revenue Per Store (Pie Chart)</h3>
+                    <p>
+                        The pie chart below illustrates the contribution of each store to the total revenue. Baldwin Bikes accounts for 68% of the revenue, demonstrating its high sales volume or premium product offerings. Rowlett Bikes, with only 11%, suggests potential for improvement through marketing or inventory diversification. Santa Cruz Bikes at 21% shows a steady performance.
+                    </p>
+                    <div class="image-placeholder">
+                        <img src="RPS.png" alt="Revenue Per Store">
+                    </div>
+        
+                    <h3>Chart 2: Revenue Per Brand (Bar Chart)</h3>
+                    <p>
+                        The bar chart demonstrates the revenue contribution from different brands. Trek leads significantly with over $5M in revenue, suggesting high customer preference for Trek bikes or a broader product range. Electra and Surly are the next best-performing brands, collectively contributing over $2.4M. Other brands like Pure Cycles and Heller need better promotion strategies to enhance visibility and sales.
+                    </p>
+                    <div class="image-placeholder">
+                        <img src="RPB.png" alt="Revenue Per Brand">
+                    </div>
+        
+                    <h3>Chart 3: Revenue Per Category (Bar Chart)</h3>
+                    <p>
+                        The category-wise revenue bar chart highlights that Mountain Bikes dominate the revenue ($3M), followed by Road Bikes ($1.8M). Electric Bikes and Cruisers Bicycles also perform well, highlighting their growing popularity. Children's Bicycles and Comfort Bicycles contribute less, signaling potential areas for growth or market penetration strategies.
+                    </p>
+                    <div class="image-placeholder">
+                        <img src="RPC.png" alt="Revenue Per Category">
+                    </div>
+                </section>
+        
+
+        
+               
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <div class="section">
+          <h2>Interactive Dashboard for Strategic Analysis</h2>
+          <p>
+              The Tableau dashboard serves as a dynamic and interactive visualization tool, offering a detailed exploration of sales, inventory, and revenue data. This dashboard provides users with actionable insights and a seamless navigation experience. It is designed for stakeholders to analyze data efficiently and make informed decisions.
+          </p>
+      
+          <h3>Key Features</h3>
+          <ul class="styled-list">
+              <li><strong>Sales Performance Dashboard:</strong> Analyze sales trends by state, category, and customer demographics.</li>
+              <li><strong>Inventory Optimization Dashboard:</strong> Identify underperforming products and optimize inventory allocation across regions.</li>
+              <li><strong>Revenue Forecast Dashboard:</strong> Project future revenue trends using historical data and key performance indicators.</li>
+              <li><strong>State Navigation:</strong> Easily filter and navigate through data by selecting specific states to view regional performance.</li>
+          </ul>
+      
+          <h3>Navigation Through the Dashboard</h3>
+          <p>
+              The dashboard is designed for intuitive navigation, offering the following capabilities:
+          </p>
+          <ul class="styled-list">
+              <li><strong>Year Selection:</strong> Filter data for specific years (2016, 2017, or 2018) to analyze trends over time.</li>
+              <li><strong>Interactive State Navigation:</strong> Select individual states to examine sales and revenue performance at the regional level.</li>
+              <li><strong>Drill-Down Capabilities:</strong> Click on charts and graphs to view detailed insights into revenue, sales trends, and customer behavior.</li>
+              <li><strong>Dynamic Visualizations:</strong> Explore key metrics through interactive line charts, pie charts, and treemaps.</li>
+          </ul>
+      
+          <h3>Insights and Recommendations</h3>
+          <p>
+              The dashboard reveals critical insights, such as:
+          </p>
+          <ul class="styled-list">
+              <li><strong>Regional Trends:</strong> States like California and New York lead in revenue, suggesting strategic focus for marketing efforts in these areas.</li>
+              <li><strong>Seasonal Peaks:</strong> Revenue surges during the holiday season, emphasizing the importance of targeted seasonal promotions.</li>
+              <li><strong>Product Performance:</strong> Mountain Bikes generate the highest revenue, indicating a strong customer preference for this category.</li>
+              <li><strong>Customer Segmentation:</strong> Top customers account for a significant portion of revenue, highlighting the potential for loyalty programs and personalized campaigns.</li>
+          </ul>
+      
+          <h3>Live Dashboard</h3>
+          <p>
+              Below is the embedded Tableau dashboard, offering interactive exploration of the data:
+          </p>
+          <div class="tableau-container">
+            <div class='tableauPlaceholder' id='viz1733275959721' style='position: relative;'>
+                <noscript>
+                    <a href='#'>
+                        <img alt='Dashboard 1' src='https://public.tableau.com/static/images/Bi/BikeStoreDataViz/Dashboard1/1_rss.png' style='border: none;' />
+                    </a>
+                </noscript>
+                <object class='tableauViz'>
+                    <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                    <param name='embed_code_version' value='3' />
+                    <param name='name' value='BikeStoreDataViz/Dashboard1' />
+                    <param name='tabs' value='no' />
+                    <param name='toolbar' value='yes' />
+                    <param name='static_image' value='https://public.tableau.com/static/images/Bi/BikeStoreDataViz/Dashboard1/1.png' />
+                    <param name='animate_transition' value='yes' />
+                    <param name='display_static_image' value='yes' />
+                    <param name='display_spinner' value='yes' />
+                    <param name='display_overlay' value='yes' />
+                    <param name='display_count' value='yes' />
+                    <param name='language' value='en-GB' />
+                    <param name='filter' value='publish=yes' />
+                </object>
+            </div>
+            <script type='text/javascript'>
+                var divElement = document.getElementById('viz1733275959721');
+                var vizElement = divElement.getElementsByTagName('object')[0];
+                if (divElement.offsetWidth > 800) {
+                    vizElement.style.width = '1100px';
+                    vizElement.style.height = '1627px';
+                } else if (divElement.offsetWidth > 500) {
+                    vizElement.style.width = '1100px';
+                    vizElement.style.height = '1627px';
+                } else {
+                    vizElement.style.width = '100%';
+                    vizElement.style.height = '2977px';
+                }
+                var scriptElement = document.createElement('script');
+                scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                vizElement.parentNode.insertBefore(scriptElement, vizElement);
+            </script>
+        </div>
+      </div>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Insights and Recommendations Section -->
+<section class="section">
+  <h2>Insights and Recommendations</h2>
+  <p>
+      The comprehensive analysis conducted on the Bikestore dataset revealed actionable insights and areas of improvement. These recommendations are designed to help the business maximize revenue, optimize inventory, and improve overall operational efficiency:
+  </p>
+  <ul class="styled-list">
+      <li>
+          <strong>Prioritize Mountain Bikes:</strong> With Mountain Bikes contributing significantly to the overall revenue, it is recommended to allocate more resources to this category. This includes launching new models, enhancing marketing campaigns targeted toward outdoor enthusiasts, and maintaining sufficient stock levels to meet demand surges.
+      </li>
+      <li>
+          <strong>Seasonal Promotions:</strong> Data trends indicate revenue spikes in certain months, such as August and October. Leveraging these patterns, the business can implement well-timed promotional campaigns, such as limited-time discounts and holiday bundles, to capitalize on increased consumer interest.
+      </li>
+      <li>
+          <strong>Regional Expansion:</strong> The performance disparity across different states highlights untapped market potential. Specifically, targeted marketing campaigns in underperforming regions like the Midwest, along with strategic partnerships with local retailers, could help improve sales in these areas.
+      </li>
+      <li>
+          <strong>Enhance Brand Collaboration:</strong> Collaborating closely with top-performing brands like Trek to launch exclusive product lines or promotional events can further boost sales. Simultaneously, weaker-performing brands should be evaluated for potential adjustments, such as offering value-focused alternatives.
+      </li>
+      <li>
+          <strong>Optimize Inventory Levels:</strong> Data suggests that certain categories, such as Electric Bikes and Cruisers, have a growing demand. Forecasting inventory requirements based on historical data can prevent overstocking or understocking issues, leading to improved operational efficiency.
+      </li>
+  </ul>
+  <p>
+      Implementing these recommendations strategically will not only enhance revenue but also improve the customer experience by aligning offerings with consumer preferences and demand patterns.
+  </p>
+</section>
+
+<!-- Learnings from the Project Section -->
+<section class="section">
+  <h2>Learnings from the Project</h2>
+  <p>
+      This project was an enriching experience, offering an in-depth understanding of data analytics and its impact on decision-making. Below are the key learnings and reflections:
+  </p>
+  <h3>What I Learned:</h3>
+  <ul class="styled-list">
+      <li>
+          <strong>SQL Mastery:</strong> Gained proficiency in advanced SQL techniques, such as multi-table joins, aggregate functions, and handling null values and duplicates. These skills proved invaluable in cleaning and transforming raw data into actionable insights.
+      </li>
+      <li>
+          <strong>Storytelling Through Visualization:</strong> Learned the importance of creating clear and impactful visualizations to communicate insights effectively. Tableau's interactivity allowed for dynamic exploration of data trends, making the findings accessible to stakeholders.
+      </li>
+      <li>
+          <strong>Data-Driven Problem Solving:</strong> Improved the ability to identify and address business challenges through data analytics. This project demonstrated how data can be a powerful tool for diagnosing issues and driving strategic decisions.
+      </li>
+      <li>
+          <strong>Cross-Tool Integration:</strong> Developed a deeper appreciation for integrating multiple tools, such as SQL for data cleaning, Excel for pivot table analysis, and Tableau for visualization, to create a holistic analytics workflow.
+      </li>
+  </ul>
+  <h3>What I Would Do Differently:</h3>
+  <ul class="styled-list">
+      <li>
+          Allocate more time for exploratory data analysis to uncover hidden trends and correlations that could further enrich the insights.
+      </li>
+      <li>
+          Incorporate predictive analytics to forecast future trends, such as projected sales by category or region, using advanced machine learning models.
+      </li>
+      <li>
+          Focus on more granular segmentation of customer demographics to tailor marketing strategies and product recommendations more effectively.
+      </li>
+      <li>
+          Collaborate with domain experts or business stakeholders to align data analysis with real-world priorities and expectations.
+      </li>
+  </ul>
+</section>
+
+<!-- Conclusion Section -->
+<section class="section">
+  <h2>Conclusion</h2>
+  <p>
+      The Bikestore Data Analytics Project served as a testament to the power of data-driven decision-making. By employing SQL for meticulous data cleaning, Excel for detailed analysis, and Tableau for dynamic visualization, the project uncovered key insights that can guide the business toward increased profitability and efficiency.
+  </p>
+  <p>
+      This project not only provided actionable recommendations—such as prioritizing Mountain Bikes, implementing seasonal promotions, and expanding regional reach—but also highlighted the importance of continuously evolving analytics strategies. The insights gained will be instrumental in optimizing operations and staying competitive in a dynamic market landscape.
+  </p>
+  <p>
+      Moving forward, integrating predictive analytics, leveraging real-time data, and incorporating customer feedback will be pivotal in sustaining growth and innovation. The learnings from this project lay a strong foundation for tackling even more complex business challenges in the future.
+  </p>
+</section>
+
+<!-- Citations Section -->
+<section class="section">
+  <h2>Citations</h2>
+  <ul class="styled-list">
+      <li>
+          Tableau Public Documentation: <a href="https://www.tableau.com/support/help" target="_blank">https://www.tableau.com/support/help</a>
+      </li>
+      <li>
+          SQL Reference Documentation: <a href="https://dev.mysql.com/doc/" target="_blank">https://dev.mysql.com/doc/</a>
+      </li>
+      <li>
+          Excel for Data Analysis: <a href="https://support.microsoft.com/en-us/excel" target="_blank">https://support.microsoft.com/en-us/excel</a>
+      </li>
+      <li>
+          Business Analytics Resources: <a href="https://www.analyticsvidhya.com/" target="_blank">https://www.analyticsvidhya.com/</a>
+      </li>
+      <li>
+          Idyll Documentation: <a href="https://idyll-lang.org/docs" target="_blank">https://idyll-lang.org/docs</a>
+      </li>
+      <li>
+          Idyll Documentation 2: <a href="https://idyll-lang.org/docs/tutorial" target="_blank">https://idyll-lang.org/docs/tutorial</a>
+      </li>
+      <li>
+          GitHub IMDB Viz Help: <a href="https://github.com/" target="_blank">https://github.com/</a>
+      </li>
+      <li>
+          Tableau Public: <a href="https://public.tableau.com" target="_blank">https://public.tableau.com</a>
+      </li>
+  </ul>
+</section>
+
+
+
+
+
+
+
+
+
+
+    </main>
+
+    <!-- Footer Section -->
+    <footer class="footer">
+        <p>&copy; 2024 Bikestore Data Analytics Project. All rights reserved.</p>
+    </footer>
+</body>
+</html>
